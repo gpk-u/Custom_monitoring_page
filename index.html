@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Relic Data Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .chart-container {
+      width: 45%;
+      height: 300px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="chart-container">
+    <canvas id="cpuChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="memoryChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="storageChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="networkChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="loadChart"></canvas>
+  </div>
+  <script>
+    async function fetchData() {
+      try {
+        console.log('Fetching data...');
+        const response = await fetch('http://localhost:3000/newrelic');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Data fetched successfully:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+
+    async function displayCharts() {
+  const data = await fetchData();
+  if (!data) {
+    console.error('No data returned');
+    return;
+  }
+
+  console.log('Results:', data);
+  if (!data.timeSeries || data.timeSeries.length === 0) {
+    console.error('Unexpected data format:', data);
+    return;
+  }
+
+  const labels = data.timeSeries.map((_, index) => index);
+
+  // Adjust parsing based on actual data structure
+  const cpuUsage = data.timeSeries.map(point => point.results[0]?.average || 0);
+  const memoryUsage = data.timeSeries.map(point => point.results[1]?.result || 0);
+  const storageUsage = data.timeSeries.map(point => point.results[2]?.result || 0);
+  const receiveBytes = data.timeSeries.map(point => point.results[3]?.result || 0);
+  const transmitBytes = data.timeSeries.map(point => point.results[4]?.result || 0);
+  const loadAvg1m = data.timeSeries.map(point => point.results[5]?.average || 0);
+  const loadAvg5m = data.timeSeries.map(point => point.results[6]?.average || 0);
+  const loadAvg15m = data.timeSeries.map(point => point.results[7]?.average || 0);
+
+  const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+  new Chart(cpuCtx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'CPU Usage (%)',
+        data: cpuUsage,
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+  new Chart(memoryCtx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Memory Usage (%)',
+        data: memoryUsage,
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+
+  const storageCtx = document.getElementById('storageChart').getContext('2d');
+  new Chart(storageCtx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Storage Usage (%)',
+        data: storageUsage,
+        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+        borderColor: 'rgba(153, 102, 255, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+
+  const networkCtx = document.getElementById('networkChart').getContext('2d');
+  new Chart(networkCtx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Receive Bytes Per Second',
+        data: receiveBytes,
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+      }, {
+        label: 'Transmit Bytes Per Second',
+        data: transmitBytes,
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: Math.max(...transmitBytes, ...receiveBytes) * 1.2
+        }
+      }
+    }
+  });
+
+  const loadCtx = document.getElementById('loadChart').getContext('2d');
+  new Chart(loadCtx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Load Average 1m',
+        data: loadAvg1m,
+        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+        borderColor: 'rgba(255, 206, 86, 1)',
+        borderWidth: 1
+      }, {
+        label: 'Load Average 5m',
+        data: loadAvg5m,
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1
+      }, {
+        label: 'Load Average 15m',
+        data: loadAvg15m,
+        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+        borderColor: 'rgba(153, 102, 255, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          min: 0.0,    // Setting minimum y-axis value to 0.0
+          max: 0.05     // Setting maximum y-axis value to 2.0
+        }
+      }
+    }
+  });
+}
+
+displayCharts();
+
+
+
+  </script>
+</body>
+</html>
